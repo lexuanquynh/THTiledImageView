@@ -66,7 +66,6 @@ class THTiledImageView: UIView {
         guard let dataSource = dataSource else { return }
 
         let tileSize = dataSource.tileSize
-
         var level: Int = 1
 
         if let context = UIGraphicsGetCurrentContext() {
@@ -80,7 +79,6 @@ class THTiledImageView: UIView {
         }
 
         let length = tileSize[level - 1].width
-
         let firstColumn = Int(rect.minX / length)
         let lastColumn = Int(rect.maxX / length)
         let firstRow = Int(rect.minY / length)
@@ -98,39 +96,45 @@ class THTiledImageView: UIView {
                     tileRect = self.bounds.intersection(tileRect)
                 }
 
-                if let tile = imageForTileAtColumn(imageSize: size[level - 1], tileRect: tileRect, column, row: row, level: level) {
-                    tile.tileImage.draw(in: tileRect)
-                } else {
-                    if dataSource.accessFromServer {
-                        // download image and redraw
-                        DispatchQueue.main.async {
-                            guard let baseURL = dataSource.tileImageBaseURL else {
-                                fatalError("TileImage Base URL does not exists. You need to set tile image base url of dataSource.")
+                Task {
+                    if let tile = await imageForTileAtColumn(imageSize: size[level - 1], tileRect: tileRect, column, row: row, level: level) {
+                        tile.tileImage.draw(in: tileRect)
+                    } else {
+                        if dataSource.accessFromServer {
+                            // download image and redraw
+                            DispatchQueue.main.async {
+                                guard let baseURL = dataSource.tileImageBaseURL else {
+                                    fatalError("TileImage Base URL does not exist. You need to set tile image base URL of dataSource.")
+                                }
+                                self.downloadAndRedrawImages(imageSize: size[level - 1], baseURL: baseURL,
+                                                             tileRect: tileRect, column, row: row, level: level)
                             }
-                            self.downloadAndRedrawImages(imageSize: size[level - 1], baseURL: baseURL,
-                                                tileRect: tileRect, column, row: row, level: level)
                         }
                     }
                 }
             }
         }
     }
-
-    private func imageForTileAtColumn(imageSize: CGSize, tileRect: CGRect, _ column: Int, row: Int, level: Int) -> THTile? {
+    
+    private func imageForTileAtColumn(imageSize: CGSize, tileRect: CGRect, _ column: Int, row: Int, level: Int) async -> THTile? {
         guard let dataSource = dataSource else { return nil }
 
         let sizeInt = Int(imageSize.width)
         let imageKey = dataSource.thumbnailImageName + "_\(sizeInt)_\(level)_\(column)_\(row).\(dataSource.imageExtension)"
 
-        if let image = THImageCacheManager.default.retrieveTiles(key: imageKey) {
-            return THTile(tileImage: image, tileRect: tileRect)
-        } else {
-            DispatchQueue.main.async {
-                self.layer.isOpaque = false
+        do {
+            if let image = await THImageCacheManager.default.retrieveTiles(key: imageKey) {
+                return THTile(tileImage: image, tileRect: tileRect)
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.layer.isOpaque = false
+                }
+                return nil
             }
-            return nil
         }
     }
+
 
     private func downloadAndRedrawImages(imageSize: CGSize, baseURL: URL, tileRect: CGRect, _ column: Int, row: Int, level: Int) {
         guard let dataSource = dataSource else { return }

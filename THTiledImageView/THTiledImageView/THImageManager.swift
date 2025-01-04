@@ -14,16 +14,15 @@ typealias THImageCacheCompletion = () -> Void
 
 class THImageDownloadManager {
     static let `default` = THImageDownloadManager()
-
+    
     func downloadEachTiles(path url: URL, completion: @escaping THImageDownloaderCompletion) {
-        ImageDownloader.default.downloadImage(with: url, retrieveImageTask: nil,
-                                              options: [], progressBlock: nil) { (image, error, url, _) in
-                if let error = error {
-                    completion(nil, nil, error)
-                }
-
-                guard let image = image, let url = url else { return }
-                completion(image, url, nil)
+        ImageDownloader.default.downloadImage(with: url, options: nil, progressBlock: nil) { result in
+            switch result {
+            case .success(let imageResult):
+                completion(imageResult.image, imageResult.url, nil)
+            case .failure(let error):
+                completion(nil, nil, error)
+            }
         }
     }
 }
@@ -33,13 +32,20 @@ class THImageCacheManager {
     static let `default` = THImageCacheManager()
 
     func cacheTiles(image: UIImage, imageIdentifier: String, completion: @escaping THImageCacheCompletion) {
-        ImageCache.default.store(image, original: nil, forKey: imageIdentifier) {
+        ImageCache.default.store(image, original: nil, forKey: imageIdentifier) { result in
             completion()
         }
     }
-
-    func retrieveTiles(key: String) -> UIImage? {
-        return ImageCache.default.retrieveImageInDiskCache(forKey: key)
+    
+    func retrieveTiles(key: String) async -> UIImage? {
+        do {
+            let image = try await ImageCache.default.retrieveImageInDiskCache(forKey: key)
+            return image
+        } catch {
+            debugPrint("Failed to retrieve image for key \(key): \(error.localizedDescription)")
+            return nil
+        }
     }
+
 
 }
