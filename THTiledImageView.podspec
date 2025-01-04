@@ -17,4 +17,5 @@ Pod::Spec.new do |s|
   s.source_files = 'THTiledImageView/THTiledImageView/*.swift'
   s.frameworks = 'UIKit'
   s.dependency 'Kingfisher'
+  s.swift_version = '4.2'
 end
