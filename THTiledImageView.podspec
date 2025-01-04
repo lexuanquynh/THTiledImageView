@@ -13,7 +13,7 @@ Pod::Spec.new do |s|
   s.author           = { 'Changnam Hong' => 'hcn1519@gmail.com' }
   s.source           = { :git => 'https://github.com/TileImageTeamiOS/THTiledImageView.git', :tag => s.version.to_s }
 
-  s.ios.deployment_target = '9.0'
+  s.ios.deployment_target = '13.0'
   s.source_files = 'THTiledImageView/THTiledImageView/*.swift'
   s.frameworks = 'UIKit'
   s.dependency 'Kingfisher'
